@@ -9,6 +9,13 @@ import edu.wpi.first.math.Nat;
 
 /** A helper class that converts Pose3d objects between different standard coordinate frames. */
 public class CoordinateSystem {
+  private static final CoordinateSystem m_nwu =
+      new CoordinateSystem(CoordinateAxis.N(), CoordinateAxis.W(), CoordinateAxis.U());
+  private static final CoordinateSystem m_edn =
+      new CoordinateSystem(CoordinateAxis.E(), CoordinateAxis.D(), CoordinateAxis.N());
+  private static final CoordinateSystem m_ned =
+      new CoordinateSystem(CoordinateAxis.N(), CoordinateAxis.E(), CoordinateAxis.D());
+
   // Rotation from this coordinate system to NWU coordinate system
   private final Rotation3d m_rotation;
 
@@ -32,8 +39,8 @@ public class CoordinateSystem {
     R.assignBlock(0, 2, positiveZ.m_axis);
 
     // Require that the change of basis matrix is special orthogonal. This is true
-    // if the axes used are orthogonal and normalized. The Axis class already
-    // normalizes itself, so we just need to check for orthogonality.
+    // if the axes used are orthogonal and normalized. The CoordinateAxis class
+    // already normalizes itself, so we just need to check for orthogonality.
     if (!R.times(R.transpose()).equals(Matrix.eye(Nat.N3()))) {
       throw new IllegalArgumentException("Coordinate system isn't special orthogonal");
     }
@@ -78,33 +85,65 @@ public class CoordinateSystem {
   }
 
   /**
-   * Returns an instance of the NWU coordinate system.
+   * Returns an instance of the North-West-Up (NWU) coordinate system.
    *
-   * @return An instance of the NWU coordinate system.
+   * <p>The +X axis is north, the +Y axis is west, and the +Z axis is up.
+   *
+   * @return An instance of the North-West-Up (NWU) coordinate system.
    */
   @SuppressWarnings("MethodName")
   public static CoordinateSystem NWU() {
-    return new CoordinateSystem(CoordinateAxis.N(), CoordinateAxis.W(), CoordinateAxis.U());
+    return m_nwu;
   }
 
   /**
-   * Returns an instance of the EDN coordinate system.
+   * Returns an instance of the East-Down-North (EDN) coordinate system.
    *
-   * @return An instance of the EDN coordinate system.
+   * <p>The +X axis is east, the +Y axis is down, and the +Z axis is north.
+   *
+   * @return An instance of the East-Down-North (EDN) coordinate system.
    */
   @SuppressWarnings("MethodName")
   public static CoordinateSystem EDN() {
-    return new CoordinateSystem(CoordinateAxis.E(), CoordinateAxis.D(), CoordinateAxis.N());
+    return m_edn;
   }
 
   /**
-   * Returns an instance of the NED coordinate system.
+   * Returns an instance of the North-East-Down (NED) coordinate system.
    *
-   * @return An instance of the NED coordinate system.
+   * <p>The +X axis is north, the +Y axis is east, and the +Z axis is down.
+   *
+   * @return An instance of the North-East-Down (NED) coordinate system.
    */
   @SuppressWarnings("MethodName")
   public static CoordinateSystem NED() {
-    return new CoordinateSystem(CoordinateAxis.N(), CoordinateAxis.E(), CoordinateAxis.D());
+    return m_ned;
+  }
+
+  /**
+   * Converts the given translation from one coordinate system to another.
+   *
+   * @param translation The translation to convert.
+   * @param from The coordinate system the pose starts in.
+   * @param to The coordinate system to which to convert.
+   * @return The given translation in the desired coordinate system.
+   */
+  public static Translation3d convert(
+      Translation3d translation, CoordinateSystem from, CoordinateSystem to) {
+    return translation.rotateBy(from.m_rotation.minus(to.m_rotation));
+  }
+
+  /**
+   * Converts the given rotation from one coordinate system to another.
+   *
+   * @param rotation The rotation to convert.
+   * @param from The coordinate system the rotation starts in.
+   * @param to The coordinate system to which to convert.
+   * @return The given rotation in the desired coordinate system.
+   */
+  public static Rotation3d convert(
+      Rotation3d rotation, CoordinateSystem from, CoordinateSystem to) {
+    return rotation.rotateBy(from.m_rotation.minus(to.m_rotation));
   }
 
   /**
