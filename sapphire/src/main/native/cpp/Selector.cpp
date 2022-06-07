@@ -9,31 +9,22 @@
 #include <imgui_stdlib.h>
 #include <portable-file-dialogs.h>
 #include <wpi/DataLogReader.h>
-#include <ostream>
-#include <iostream>
+#include <memory>
+#include <vector>
 
 #include "App.h"
+#include "LogData.h"
+#include "wpi/fmt/raw_ostream.h"
 
-static wpi::log::DataLogReader m_currentDatalog;
-
-static wpi::log::DataLogReader LoadDataLog(std::string_view filename) {
-  std::error_code ec;
-  auto buf = wpi::MemoryBuffer::GetFile(filename, ec);
-  std::string fn{filename};
-  if (ec) {
-  }
-
-  wpi::log::DataLogReader reader{std::move(buf)};
-  if (!reader.IsValid()) {
-    std::cout << "Data log invalid" << std::endl;
-  }
-
-  return reader;
-}
+static LogData selectedLogData;
 
 void DisplayLogSelector() {
   static std::string logFile = "";
   static std::unique_ptr<pfd::open_file> logFileSelector;
+  static std::string logFileMessage;
+
+  static std::string videoFile = "";
+  static std::unique_ptr<pfd::open_file> videoFileSelector;
 
   SetNextWindowPos(ImVec2{0, 20}, ImGuiCond_FirstUseEver);
   SetNextWindowSize(ImVec2{500, 100}, ImGuiCond_FirstUseEver);
@@ -41,21 +32,48 @@ void DisplayLogSelector() {
     if(ImGui::Button("Load Log")) {
       logFileSelector = std::make_unique<pfd::open_file>(
           "Select Data Log", "",
-          std::vector<std::string>{"DataLog Files", "*.wpilog"},
+          std::vector<std::string>{ "Data Log Files", "*.wpilog *.csv"},
           pfd::opt::none);
     }
     ImGui::SameLine();
     ImGui::TextUnformatted(logFile.c_str());
+    ImGui::TextUnformatted(logFileMessage.c_str());
 
     if(ImGui::Button("Load Video")) {
-
+      videoFileSelector = std::make_unique<pfd::open_file>(
+        "Select Video File", "",
+        std::vector<std::string>{ "Video Files", "*.mp4 *.MP4 *.mov"},
+        pfd::opt::none);
     }
+    ImGui::SameLine();
+    ImGui::TextUnformatted(videoFile.c_str());
   }
   ImGui::End();
 
   if(logFileSelector && logFileSelector->ready(0)) {
-    logFile = logFileSelector->result()[0];
-    m_currentDatalog = LoadDataLog(logFileSelector->result()[0]);
+    auto result = logFileSelector->result();
+    if(!result.empty()) {
+      logFile = result[0];
+      LogData logData;
+      bool success = logData.LoadWPILog(result[0]);
+      if(success) {
+        logFileMessage = "Success";
+      } else {
+        logFileMessage = "Failure";
+      }
+    }
     logFileSelector.reset();
   }
+
+  if(videoFileSelector && videoFileSelector->ready(0)) {
+    auto result = videoFileSelector->result();
+    if(!result.empty()) {
+      videoFile = result[0];
+    }
+    videoFileSelector.reset();
+  }
+}
+
+LogData GetLogData() {
+  return selectedLogData;
 }
