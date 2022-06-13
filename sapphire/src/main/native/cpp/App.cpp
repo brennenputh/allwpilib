@@ -6,6 +6,8 @@
 
 #include <memory>
 #include <string_view>
+#include <glass/Window.h>
+#include <glass/WindowManager.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 
@@ -17,6 +19,9 @@
 #include <wpigui.h>
 
 #include "Selector.h"
+#include "TimeManager.h"
+
+using namespace sapphire;
 
 namespace gui = wpi::gui;
 
@@ -25,6 +30,13 @@ const char* GetWPILibVersion();
 bool gShutdown = false;
 
 static float gDefaultScale = 1.0;
+
+static std::unique_ptr<glass::WindowManager> m_windowManager;
+
+static glass::Window* m_logSelectorWindow;
+static std::unique_ptr<Selector> m_selector;
+
+static glass::Window* m_timeBarWindow;
 
 void SetNextWindowPos(const ImVec2& pos, ImGuiCond cond, const ImVec2& pivot) {
   if ((cond & ImGuiCond_FirstUseEver) != 0) {
@@ -56,6 +68,8 @@ static void DisplayMenuBar() {
     }
     ImGui::EndMenu();
   }
+  
+  m_windowManager->DisplayMenu();
 
   ImGui::EndMainMenuBar();
 
@@ -75,21 +89,27 @@ static void DisplayMenuBar() {
   }
 }
 
-static void DisplayGui() {
-  DisplayMenuBar();
-  DisplayLogSelector();
-}
-
 void Application(std::string_view saveDir) {
   gui::CreateContext();
   glass::CreateContext();
 
   glass::SetStorageName("sapphire");
   glass::SetStorageDir(saveDir.empty() ? gui::GetPlatformSaveFileDir()
-                                       : saveDir);
+                                      : saveDir);
+  
+  auto& storage = glass::GetStorageRoot().GetChild("Sapphire");
+  m_windowManager = std::make_unique<glass::WindowManager>(storage);
+  m_windowManager->GlobalInit();
+
+  m_selector = std::make_unique<Selector>();
+  m_logSelectorWindow = m_windowManager->AddWindow(
+    "Log Selector", std::move(m_selector));
+
+  m_timeBarWindow = m_windowManager->AddWindow(
+    "Time Management", std::make_unique<TimeManager>());
 
   gui::AddWindowScaler([](float scale) { gDefaultScale = scale; });
-  gui::AddLateExecute(DisplayGui);
+  gui::AddLateExecute(DisplayMenuBar);
   gui::Initialize("Sapphire", 925, 510);
 
   gui::Main();

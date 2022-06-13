@@ -16,17 +16,6 @@
 #include <wpi/MemoryBuffer.h>
 #include <wpi/DataLogReader.h>
 
-namespace {
-struct Entry {
-  wpi::log::StartRecordData start;
-  // the datalogrecords will always be data and not control or start/finish
-  std::map<long, wpi::log::DataLogRecord> datapoints;
-  int finishTimestamp = -1;
-};
-}
-
-std::map<int, Entry> m_entries;
-
 bool LogData::LoadWPILog(std::string filename) {
   std::error_code ec;
   auto buf = wpi::MemoryBuffer::GetFile(filename.c_str(), ec);
@@ -69,10 +58,16 @@ bool LogData::LoadWPILog(std::string filename) {
         fmt::print("Entry Finished, Invalid Data Point\n");
         continue;
       }
+      
+      if(timestamp > m_maxTimestamp) {
+        m_maxTimestamp = timestamp;
+      }
 
       entry.datapoints.emplace(record.GetTimestamp(), record);
     }
   }
+  
+  m_hasLog = true;
 
   return true;
 }
