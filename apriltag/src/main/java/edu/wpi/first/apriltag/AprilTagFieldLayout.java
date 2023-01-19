@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -73,8 +74,14 @@ public class AprilTagFieldLayout {
    * @throws IOException If reading from the file fails.
    */
   public AprilTagFieldLayout(Path path) throws IOException {
-    AprilTagFieldLayout layout =
-        new ObjectMapper().readValue(path.toFile(), AprilTagFieldLayout.class);
+    AprilTagFieldLayout layout;
+    try {
+      layout = new ObjectMapper().readValue(path.toFile(), AprilTagFieldLayout.class);
+    } catch (FileNotFoundException e) {
+      throw new FileNotFoundException(
+          "Could not find AprilTagFieldLayout file.  If you are trying to load a inbuilt field, see AprilTagFields.loadFromResource().\n"
+              + e);
+    }
     m_apriltags.putAll(layout.m_apriltags);
     m_fieldDimensions = layout.m_fieldDimensions;
     setOrigin(OriginPosition.kBlueAllianceWallRightSide);
